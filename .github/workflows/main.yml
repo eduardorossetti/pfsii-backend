@@ -1,0 +1,43 @@
+name: main.deploy
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:   
+  producao-deploy:
+    env:
+      USUARIO: aluno10-pfsii
+      SENHA: aluno10-pfsii
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: INICIANDO A PUBLICAÇÃO PARA PRODUÇÃO
+        run: echo INICIANDO... 
+
+      - name: npm install, build, and test
+        run: |
+            npm install
+            npm run build --if-present
+            npm install pm2@latest -g
+        
+      - name: Conectar via SSH no servidor de Produção e realizar a publicação.
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: 129.146.68.51
+          username: ${{ env.USUARIO }}
+          password: ${{ env.SENHA }}
+          port: 22
+          source: "*"
+          target: "/home/${{ env.USUARIO }}/htdocs/${{ env.USUARIO }}.fake.edu.br/"
+
+      - name: Reiniciando a aplicação
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: 129.146.68.51
+          username: ${{ env.USUARIO }}
+          password: ${{ env.SENHA }}
+          port: 22
+          script: |
+             pm2 delete /home/${{ env.USUARIO }}/htdocs/${{ env.USUARIO }}.fake.edu.br/index.js 2> /dev/null || true && cd /home/${{ env.USUARIO }}/htdocs/${{ env.USUARIO }}.fake.edu.br && pm2 start index.js -i 
